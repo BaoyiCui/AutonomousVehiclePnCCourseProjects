@@ -137,6 +137,7 @@ bool LqrController::ComputeControlCommand(const VehicleState &localization, cons
     b = [0.0, c_f / m, 0.0, l_f * c_f / i_z]^T
     */
     // TODO 02 动力矩阵B
+    
     // cout << "matrix_bd_.row(): " << matrix_bd_.rows() << endl;
     // cout << "matrix_bd_.col(): " << matrix_bd_.cols() << endl;
     // Update state = [Lateral Error, Lateral Error Rate, Heading Error, Heading Error Rate]
