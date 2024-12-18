@@ -21,16 +21,16 @@ LqrController::~LqrController() {}
 void LqrController::LoadControlConf() {
     ts_ = 0.01;    // 每隔0.01s进行一次控制
 
-    cf_ = 155494.663;                              // 前轮侧偏刚度,左右轮之和
-    cr_ = 155494.663;                              // 后轮侧偏刚度, 左右轮之和
-    wheelbase_ = 2.852;                            
+    cf_ = 155494.663;    // 前轮侧偏刚度,左右轮之和
+    cr_ = 155494.663;    // 后轮侧偏刚度, 左右轮之和
+    wheelbase_ = 2.852;
     steer_ratio_ = 16;                             // 方向盘的转角到轮胎转动角度之间的比值系数
     steer_single_direction_max_degree_ = 470.0;    // 最大方向转角
 
-    const double mass_fl = 1845.0/4;                     // 左前悬的质量
-    const double mass_fr = 1845.0/4;                     // 右前悬的质量
-    const double mass_rl = 1845.0/4;                     // 左后悬的质量
-    const double mass_rr = 1845.0/4;                     // 右后悬的质量
+    const double mass_fl = 1845.0 / 4;              // 左前悬的质量
+    const double mass_fr = 1845.0 / 4;              // 右前悬的质量
+    const double mass_rl = 1845.0 / 4;              // 左后悬的质量
+    const double mass_rr = 1845.0 / 4;              // 右后悬的质量
     const double mass_front = mass_fl + mass_fr;    // 前悬质量
     const double mass_rear = mass_rl + mass_rr;     // 后悬质量
     mass_ = mass_front + mass_rear;
@@ -65,13 +65,12 @@ void LqrController::Init() {
     matrix_a_(1, 2) = (cf_ + cr_) / mass_;
     matrix_a_(2, 3) = 1.0;
     matrix_a_(3, 2) = (lf_ * cf_ - lr_ * cr_) / iz_;
-    // 初始化A矩阵的非常数项
+    // 初始化A矩阵的非常数项, matrix_a_ = matrix_a_ + matrix_a_coeff_ / v
     matrix_a_coeff_ = Matrix::Zero(matrix_size, matrix_size);
     matrix_a_coeff_(1, 1) = -(cf_ + cr_) / mass_;
     matrix_a_coeff_(1, 3) = (lr_ * cr_ - lf_ * cf_) / mass_;
     matrix_a_coeff_(3, 1) = (lr_ * cr_ - lf_ * cf_) / iz_;
     matrix_a_coeff_(3, 3) = -1.0 * (lf_ * lf_ * cf_ + lr_ * lr_ * cr_) / iz_;
-
     /*
     b = [0.0, c_f / m, 0.0, l_f * c_f / i_z]^T
     */
@@ -93,8 +92,8 @@ void LqrController::Init() {
     matrix_q_ = Matrix::Zero(matrix_size, matrix_size);
 
     // int q_param_size = 4;
-    matrix_q_(0, 0) = 2;    // TODO: lateral_error
-    matrix_q_(1, 1) = 1;    // TODO: lateral_error_rate
+    matrix_q_(0, 0) = 2;      // TODO: lateral_error
+    matrix_q_(1, 1) = 1;      // TODO: lateral_error_rate
     matrix_q_(2, 2) = 0.1;    // TODO: heading_error
     matrix_q_(3, 3) = 0.1;    // TODO: heading__error_rate
 
@@ -132,24 +131,20 @@ bool LqrController::ComputeControlCommand(const VehicleState &localization, cons
      0.0,   ((lr * cr - lf * cf) / i_z) / v,   (l_f * c_f - l_r * c_r) / i_z,   (-1.0 * (l_f^2 * c_f + l_r^2 * c_r) / i_z) / v;]
     */
     // TODO 01 配置状态矩阵A
-    
+    // matrix_a_和matrix_a_coeff_好像是常数矩阵？是否要在这里更新？
     /*
     b = [0.0, c_f / m, 0.0, l_f * c_f / i_z]^T
     */
     // TODO 02 动力矩阵B
-    
-    // cout << "matrix_bd_.row(): " << matrix_bd_.rows() << endl;
-    // cout << "matrix_bd_.col(): " << matrix_bd_.cols() << endl;
+    matrix_b_(1, 0) = cf_ / mass_;
+    matrix_b_(3, 0) = lf_ * cf_ / iz_;
+    matrix_bd_ = matrix_bd_ * ts_;    // matrix_b_和matrix_bd_似乎是常数矩阵？还需要更新吗
     // Update state = [Lateral Error, Lateral Error Rate, Heading Error, Heading Error Rate]
-
     // TODO 03 计算横向误差并且更新状态向量x
-    UpdateState(localization);
+    UpdateState(localization);    // 计算横向误差在UpdateState里面
 
     // TODO 04 更新状态矩阵A并将状态矩阵A离散化
     UpdateMatrix(localization);
-
-    // cout << "matrix_bd_.row(): " << matrix_bd_.rows() << endl;
-    // cout << "matrix_bd_.col(): " << matrix_bd_.cols() << endl;
 
     // TODO 05 Solve Lqr Problem
     SolveLQRProblem(matrix_ad_, matrix_bd_, matrix_q_, matrix_r_, lqr_eps_, lqr_max_iteration_, &matrix_k_);
@@ -161,6 +156,7 @@ bool LqrController::ComputeControlCommand(const VehicleState &localization, cons
     //   then to 100% ratio
     std::cout << "matrix_k_: " << matrix_k_ << std::endl;
     double steer_angle_feedback = 0;
+    steer_angle_feedback = -(matrix_k_ * matrix_state_)(0, 0);
 
     // TODO 07 计算前馈控制，计算横向转角的反馈量
     double steer_angle_feedforward = 0.0;
@@ -172,6 +168,7 @@ bool LqrController::ComputeControlCommand(const VehicleState &localization, cons
     } else if (steer_angle <= -atan2_to_PI(20.0)) {
         steer_angle = -atan2_to_PI(20.0);
     }
+    std::cout << steer_angle << std::endl;
     // Set the steer commands
     cmd.steer_target = steer_angle;
 
@@ -196,13 +193,61 @@ void LqrController::UpdateState(const VehicleState &vehicle_state) {
 }
 
 // TODO 04 更新状态矩阵A并将状态矩阵A离散化
-void LqrController::UpdateMatrix(const VehicleState &vehicle_state) {}
+void LqrController::UpdateMatrix(const VehicleState &vehicle_state) {
+    // 防止速度等于0出现除0错误
+    double v = max(vehicle_state.velocity, minimum_speed_protection_);
+    // 更新连续系统状态矩阵
+    matrix_a_(1, 1) = matrix_a_coeff_(1, 1) / v;
+    matrix_a_(1, 3) = matrix_a_coeff_(1, 3) / v;
+    matrix_a_(3, 1) = matrix_a_coeff_(3, 1) / v;
+    matrix_a_(3, 3) = matrix_a_coeff_(3, 3) / v;
 
-// TODO 07 前馈控制，计算横向转角的反馈量
-double LqrController::ComputeFeedForward(const VehicleState &localization, double ref_curvature) {}
+    // 使用ZOH精确离散化
+    matrix_ad_(0, 0) = 1.0;
+    matrix_ad_(0, 1) = 0.00593268 * (1 - exp(-1.68558 / v));
+    matrix_ad_(0, 2) = 0.010000000000000142 + (-0.00593268 + 0.00593268 * exp(-1.68558 / v)) / v;
+    matrix_ad_(0, 3) = 168.55790027100272 * (3.519668608485956e-7 + exp(-1.685579002710027 / v) * (3.519668608485906e-7 + 4.176213162156246e-7 * v)) - 4.176213162156246e-7 * v;
+
+    matrix_ad_(1, 0) = 0.0;
+    matrix_ad_(1, 1) = 1.0 * exp(-1.68558 / v);
+    matrix_ad_(1, 2) = 168.55790027100272 * (exp(-1.68558 / v) * (-0.000059326795029614625 - 0.000035196686084859064 * v) + 0.000035196686084859064 * v);
+    matrix_ad_(1, 3) = 0.0;
+
+    matrix_ad_(2, 0) = 0.0;
+    matrix_ad_(2, 1) = 0.0;
+    matrix_ad_(2, 2) = 1.0 * exp(-1.68558 / v) * (-3.3723378595376876e-18 - 0.00593268 * v) + 0.00593268 * v;
+    matrix_ad_(2, 3) = 0.0;
+
+    matrix_ad_(3, 0) = 0.0;
+    matrix_ad_(3, 1) = 0.0;
+    matrix_ad_(3, 2) = 0.0;
+    matrix_ad_(3, 3) = exp(-1.68558 / v) * (2.842170943040401e-16 + 1.0 * v) / v;
+}
 
 // TODO 03 计算误差
-void LqrController::ComputeLateralErrors(const double x, const double y, const double theta, const double linear_v, const double angular_v, const double linear_a, LateralControlErrorPtr &lat_con_err) {}
+void LqrController::ComputeLateralErrors(const double x, const double y, const double theta, const double linear_v, const double angular_v, const double linear_a, LateralControlErrorPtr &lat_con_err) {
+    // 查询最近的点
+    TrajectoryPoint nearest_pt = QueryNearestPointByPosition(x, y);
+
+    double e_cg = cos(nearest_pt.heading) * (nearest_pt.y - y) - sin(nearest_pt.heading) * (nearest_pt.x - x);
+    double e_theta = NormalizeAngle(nearest_pt.heading - theta);
+    double dot_e_cg = linear_v * sin(e_theta);
+    double dot_e_theta = angular_v - nearest_pt.kappa * nearest_pt.v;
+
+    lat_con_err->lateral_error = e_cg;
+    lat_con_err->heading_error = e_theta;
+    // \dot e_{cg} = v_y + v_x * tan(e_theta)
+    lat_con_err->lateral_error_rate = dot_e_cg;
+    lat_con_err->heading_error_rate = dot_e_theta;
+}
+
+// TODO 07 前馈控制，计算横向转角的反馈量
+double LqrController::ComputeFeedForward(const VehicleState &localization, double ref_curvature) {
+    if (isnan(ref_curvature)) {
+        ref_curvature = 0;
+    }
+    return 0.0;
+}
 
 // 查询距离当前位置最近的轨迹点
 TrajectoryPoint LqrController::QueryNearestPointByPosition(const double x, const double y) {
@@ -235,6 +280,23 @@ void LqrController::SolveLQRProblem(const Matrix &A, const Matrix &B, const Matr
         std::cout << "LQR solver: one or more matrices have incompatible dimensions." << std::endl;
         return;
     }
+    Matrix P = Matrix::Zero(basic_state_size_, basic_state_size_);
+
+    for (int i = 0; i < max_num_iteration; i++) {
+        // 迭代更新P矩阵
+        Matrix P_new = Q + A.transpose() * P * A - (A.transpose() * P * B) * ((R + B.transpose() * P * B)).inverse() * B.transpose() * P * A + Q;
+
+        Matrix K = (R + B.transpose() * P * B).inverse() * B.transpose() * P_new * A;
+
+        // 检查P_new与P的差距，若小于tolerance则停止迭代
+        if ((P_new - P).norm() < tolerance) {
+            *ptr_K = K;
+            return;
+        }
+        P = P_new;    // 更新P
+    }
+    std::cout << "Maximum iterations reached without convergence." << std::endl;
+    *ptr_K = (R + B.transpose() * P * B).inverse() * B.transpose() * P * A;
 }
 
 }    // namespace control
