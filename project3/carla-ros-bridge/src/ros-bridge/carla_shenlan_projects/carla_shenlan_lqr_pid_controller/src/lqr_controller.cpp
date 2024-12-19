@@ -267,6 +267,23 @@ void LqrController::SolveLQRProblem(const Matrix &A, const Matrix &B, const Matr
         std::cout << "LQR solver: one or more matrices have incompatible dimensions." << std::endl;
         return;
     }
+
+    Matrix P = Q;
+    Matrix P_new = Q;
+    Matrix At = A.transpose();
+    Matrix Bt = B.transpose();
+
+    for (int i = 0; i < max_num_iteration; i++) {
+        P_new = At * P * A - At * P * B * (R + Bt * P * B).inverse() * Bt * P * A + Q;
+        double diff = fabs((P_new - P).maxCoeff());
+        P = P_new;
+        if (diff < tolerance) {
+            cout << "diff: " << diff << endl;
+            *ptr_K = (R + Bt * P * B).inverse() * Bt * P * A;
+            return;
+        }
+    }
+    cout << "exceed max iteration" << endl;
 }
 
 }    // namespace control
