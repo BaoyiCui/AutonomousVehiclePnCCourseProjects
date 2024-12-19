@@ -164,7 +164,8 @@ bool LqrController::ComputeControlCommand(const VehicleState &localization, cons
     //   Convert vehicle steer angle from rad to degree and then to steer degrees
     //   then to 100% ratio
     std::cout << "matrix_k_: " << matrix_k_ << std::endl;
-    double steer_angle_feedback = 0;
+    cout << "matrix_k * matrix_state: " << (matrix_k_ * matrix_state_) << endl;
+    double steer_angle_feedback = -(matrix_k_ * matrix_state_)(0, 0);
 
     // TODO 07 计算前馈控制，计算横向转角的反馈量
     double steer_angle_feedforward = 0.0;
