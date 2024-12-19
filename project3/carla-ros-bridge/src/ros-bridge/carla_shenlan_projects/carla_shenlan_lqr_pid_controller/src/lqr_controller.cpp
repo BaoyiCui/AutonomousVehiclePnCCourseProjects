@@ -132,7 +132,7 @@ bool LqrController::ComputeControlCommand(const VehicleState &localization, cons
      0.0,   ((lr * cr - lf * cf) / i_z) / v,   (l_f * c_f - l_r * c_r) / i_z,   (-1.0 * (l_f^2 * c_f + l_r^2 * c_r) / i_z) / v;]
     */
     // TODO 01 配置状态矩阵A
-    double v = max(localization.velocity, minimum_speed_protection_);
+    double v = max(localization.velocity, minimum_speed_protection_);    // 避免除0
     matrix_a_(1, 1) = matrix_a_coeff_(1, 1) / v;
     matrix_a_(1, 3) = matrix_a_coeff_(1, 3) / v;
     matrix_a_(3, 1) = matrix_a_coeff_(3, 1) / v;
@@ -202,7 +202,16 @@ void LqrController::UpdateState(const VehicleState &vehicle_state) {
 }
 
 // TODO 04 更新状态矩阵A并将状态矩阵A离散化
-void LqrController::UpdateMatrix(const VehicleState &vehicle_state) {}
+void LqrController::UpdateMatrix(const VehicleState &vehicle_state) {
+    double v = max(vehicle_state.velocity, minimum_speed_protection_);
+    // 更新A矩阵
+    matrix_a_(1, 1) = matrix_a_coeff_(1, 1) / v;
+    matrix_a_(1, 3) = matrix_a_coeff_(1, 3) / v;
+    matrix_a_(3, 1) = matrix_a_coeff_(3, 1) / v;
+    matrix_a_(3, 3) = matrix_a_coeff_(3, 3) / v;
+    // 更新A_d矩阵
+    matrix_ad_ = Matrix::Identity(basic_state_size_, basic_state_size_) + matrix_a_ * ts_;
+}
 
 // TODO 07 前馈控制，计算横向转角的反馈量
 double LqrController::ComputeFeedForward(const VehicleState &localization, double ref_curvature) { return 0.0; }
