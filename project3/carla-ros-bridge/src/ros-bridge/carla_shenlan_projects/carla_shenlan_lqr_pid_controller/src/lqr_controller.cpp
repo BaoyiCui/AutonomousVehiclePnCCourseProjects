@@ -210,12 +210,41 @@ void LqrController::UpdateMatrix(const VehicleState &vehicle_state) {
     matrix_a_(1, 3) = matrix_a_coeff_(1, 3) / v;
     matrix_a_(3, 1) = matrix_a_coeff_(3, 1) / v;
     matrix_a_(3, 3) = matrix_a_coeff_(3, 3) / v;
-    // 更新A_d矩阵
-    matrix_ad_ = Matrix::Identity(basic_state_size_, basic_state_size_) + matrix_a_ * ts_;
+    // 更新A_d矩阵，前向欧拉法
+    // matrix_ad_ = Matrix::Identity(basic_state_size_, basic_state_size_) + matrix_a_ * ts_;
+    // 更新A_d矩阵，ZOH精确离散化
+    // 计算指数项
+    double exp_term = exp(-1.68558 / v);
+
+    // 使用ZOH精确离散化
+    matrix_ad_(0, 0) = 1.0;
+    matrix_ad_(0, 1) = 0.00593268 * (1.0 - exp_term);
+    matrix_ad_(0, 2) = 0.010000000000000142 + (-0.00593268 + 0.00593268 * exp_term) / v;
+    matrix_ad_(0, 3) = 168.55790027100272 * (3.519668608485956e-7 + exp_term * (3.519668608485906e-7 + 4.176213162156246e-7 * v)) - 4.176213162156246e-7 * v;
+
+    matrix_ad_(1, 0) = 0.0;
+    matrix_ad_(1, 1) = 1.0 * exp_term;
+    matrix_ad_(1, 2) = 168.55790027100272 * (exp_term * (-0.000059326795029614625 - 0.000035196686084859064 * v) + 0.000035196686084859064 * v);
+    matrix_ad_(1, 3) = 0.0;
+
+    matrix_ad_(2, 0) = 0.0;
+    matrix_ad_(2, 1) = 0.0;
+    matrix_ad_(2, 2) = 1.0;
+    matrix_ad_(2, 3) = exp_term * (-0.00593268 * v - 3.3723378595376876e-18) + 0.00593268 * v;
+
+    matrix_ad_(3, 0) = 0.0;
+    matrix_ad_(3, 1) = 0.0;
+    matrix_ad_(3, 2) = 0.0;
+    matrix_ad_(3, 3) = exp_term * (1.0 * v + 2.842170943040401e-16) / v;
 }
 
 // TODO 07 前馈控制，计算横向转角的反馈量
-double LqrController::ComputeFeedForward(const VehicleState &localization, double ref_curvature) { return 0.0; }
+double LqrController::ComputeFeedForward(const VehicleState &localization, double ref_curvature) {
+    if (isnan(ref_curvature)) {
+        ref_curvature = 0;
+    }
+    // const double K_v = lr_ * mass_ / (2 * cf_ * ());
+}
 
 // TODO 03 计算误差
 void LqrController::ComputeLateralErrors(const double x, const double y, const double theta, const double linear_v, const double angular_v, const double linear_a, LateralControlErrorPtr &lat_con_err) {
