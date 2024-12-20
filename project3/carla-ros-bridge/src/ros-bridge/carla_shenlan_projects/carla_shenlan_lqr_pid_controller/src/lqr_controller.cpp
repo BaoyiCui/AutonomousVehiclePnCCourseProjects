@@ -142,6 +142,7 @@ bool LqrController::ComputeControlCommand(const VehicleState &localization, cons
     b = [0.0, c_f / m, 0.0, l_f * c_f / i_z]^T
     */
     // TODO 02 动力矩阵B
+    matrix_bd_ = matrix_b_ * ts_;
     // cout << "matrix_bd_.row(): " << matrix_bd_.rows() << endl;
     // cout << "matrix_bd_.col(): " << matrix_bd_.cols() << endl;
     // Update state = [Lateral Error, Lateral Error Rate, Heading Error, Heading Error Rate]
@@ -243,7 +244,10 @@ double LqrController::ComputeFeedForward(const VehicleState &localization, doubl
     if (isnan(ref_curvature)) {
         ref_curvature = 0;
     }
-    // const double K_v = lr_ * mass_ / (2 * cf_ * ());
+    const double K_v = lr_ * mass_ / (2 * cf_ * (lf_ + lr_));
+    const double v = localization.velocity;
+    double steer_angle_feedforward = ref_curvature * wheelbase_ + K_v * v * v * ref_curvature - matrix_k_(0, 2) * ref_curvature * (lr_ - lf_ * mass_ * v * v / (2 * cr_ * wheelbase_));
+    return steer_angle_feedforward;
 }
 
 // TODO 03 计算误差
