@@ -1,6 +1,7 @@
 #include "carla_shenlan_mpc_controller/mpc_controller.h"
 
 #include <algorithm>
+#include <cmath>
 #include <iomanip>
 #include <utility>
 #include <vector>
@@ -78,19 +79,21 @@ void FG_eval::operator()(ADvector &fg, ADvector &vars) {
     fg[0] = 0;    // 0 is the index at which Ipopt expects fg to store the cost value,
     /* TODO: Objective term 1: Keep close to reference values.*/
     for (size_t t = 0; t < Np; t++) {
-        fg[0] += cte_weight *;
-        fg[0] += epsi_weight *;
-        fg[0] += v_weight *;
+        fg[0] += cte_weight * CppAD::pow(vars[cte_start + t] - ref_cte, 2);
+        fg[0] += epsi_weight * CppAD::pow(vars[epsi_start + t] - ref_epsi, 2);
+        // AD<double> speed = CppAD::sqrt(vars[v_longitudinal_start + t] * vars[v_longitudinal_start + t] + vars[v_lateral_start + t] * vars[v_lateral_start + t]);
+        std::cout << "ref_v: " << ref_v << std::endl;
+        fg[0] += v_weight * (CppAD::pow(vars[v_longitudinal_start + t], 2) + CppAD::pow(vars[v_lateral_start + t], 2) - CppAD::pow(ref_v, 2));
     }
     /* TODO: Objective term 2: Avoid to actuate as much as possible, minimize the use of actuators.*/
     for (size_t t = 0; t < Nc; t++) {
-        fg[0] += steer_actuator_cost_weight_fg *;
-        fg[0] += acc_actuator_cost_weight_fg *;
+        fg[0] += steer_actuator_cost_weight_fg * CppAD::pow(vars[front_wheel_angle_start + t], 2);
+        fg[0] += acc_actuator_cost_weight_fg * CppAD::pow(vars[longitudinal_acceleration_start + t], 2);
     }
     /* TODO: Objective term 3: Enforce actuators smoothness in change, minimize the value gap between sequential actuation.*/
     for (size_t t = 0; t < Nc - 1; t++) {
-        fg[0] += change_steer_cost_weight *;
-        fg[0] += change_accel_cost_weight *;
+        fg[0] += change_steer_cost_weight * 0.0;
+        fg[0] += change_accel_cost_weight * 0.0;
     }
 
     /* Initial constraints, initialize the model to the initial state*/
@@ -141,21 +144,26 @@ void FG_eval::operator()(ADvector &fg, ADvector &vars) {
         // TODO： 补全车辆动力学模型，作为MPC的等式约束条件，车辆动力学模型需要注意参数的正方向的定义
         /*The idea here is to constraint this value to be 0.*/
         /* 全局坐标系 */
-        fg[1 + x_start + t] = ;
-        fg[1 + y_start + t] = ;
+        fg[1 + x_start + t] = x_1 - (x_0 + (v_longitudinal_0 * CppAD::cos(psi_0) - v_lateral_0 * CppAD::sin(psi_0)) * dt);
+        fg[1 + y_start + t] = y_1 - (y_0 + (v_longitudinal_0 * CppAD::sin(psi_0) + v_lateral_0 * CppAD::cos(psi_0)) * dt);
 
         /* 航向角变化 */
-        fg[1 + psi_start + t] = ;
+        fg[1 + psi_start + t] = psi_1 - (psi_0 + yaw_rate_0 * dt);
 
         /* 车辆纵向速度 */
-        fg[1 + v_longitudinal_start + t] = ;
+        fg[1 + v_longitudinal_start + t] = v_longitudinal_1 - (v_longitudinal_0 + longitudinal_acceleration_0 * dt);
 
         /* 车辆侧向速度 */
-        fg[1 + v_lateral_start + t] = ;
+        // fg[1 + v_lateral_start + t] = 0;
+        // AD<double> a_lateral = ((-v_longitudinal_0 * yaw_rate_0)) + (2 / m) * (Cf * ((-front_wheel_angle_0 / 1) - ((v_lateral_0 + lf * yaw_rate_0) / (v_longitudinal_0))) + Cr * ((lr * yaw_rate_0 - v_lateral_0) / (v_longitudinal_0)));
+        // 注意这里front_wheel_angle_0符号和第四章推导中定义的delta方向相反
+        AD<double> a_lateral = -2 * (Cf + Cr) / (m * v_longitudinal_0) * v_lateral_0 + (2 * (lr * Cr - lf * Cf) / (m * v_longitudinal_0) - v_longitudinal_0) * yaw_rate_0 - 2 * Cf / m * front_wheel_angle_0;
+        fg[1 + v_lateral_start + t] = v_lateral_1 - (v_lateral_0 + a_lateral * dt);
 
         /* 车辆横摆角速度 */
-
-        fg[1 + yaw_rate_start + t] = ;
+        // fg[1 + yaw_rate_start + t] = 0;
+        AD<double> yaw_acceleration = 2 * (lr * Cr - lf * Cf) / (I * v_longitudinal_0) * v_lateral_0 - 2 * (lf * lf * Cf + lr * lr * Cr) / (I * v_longitudinal_0) * psi_0 - 2 * lf * Cf / I * front_wheel_angle_0;
+        fg[1 + yaw_rate_start + t] = yaw_rate_1 - (yaw_rate_0 + yaw_acceleration * dt);
 
         /* 横向位置跟踪误差 */
         fg[1 + cte_start + t] = cte_1 - (f_0 - y_0 + v_longitudinal_0 * CppAD::tan(epsi_0) * dt);
