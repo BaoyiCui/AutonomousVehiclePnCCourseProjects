@@ -82,8 +82,8 @@ void FG_eval::operator()(ADvector &fg, ADvector &vars) {
         fg[0] += cte_weight * CppAD::pow(vars[cte_start + t] - ref_cte, 2);
         fg[0] += epsi_weight * CppAD::pow(vars[epsi_start + t] - ref_epsi, 2);
         // AD<double> speed = CppAD::sqrt(vars[v_longitudinal_start + t] * vars[v_longitudinal_start + t] + vars[v_lateral_start + t] * vars[v_lateral_start + t]);
-        std::cout << "ref_v: " << ref_v << std::endl;
-        fg[0] += v_weight * (CppAD::pow(vars[v_longitudinal_start + t], 2) + CppAD::pow(vars[v_lateral_start + t], 2) - CppAD::pow(ref_v, 2));
+        // std::cout << "ref_v: " << ref_v << std::endl;
+        fg[0] += v_weight * CppAD::pow(vars[v_longitudinal_start + t] - ref_v, 2);
     }
     /* TODO: Objective term 2: Avoid to actuate as much as possible, minimize the use of actuators.*/
     for (size_t t = 0; t < Nc; t++) {
@@ -92,8 +92,8 @@ void FG_eval::operator()(ADvector &fg, ADvector &vars) {
     }
     /* TODO: Objective term 3: Enforce actuators smoothness in change, minimize the value gap between sequential actuation.*/
     for (size_t t = 0; t < Nc - 1; t++) {
-        fg[0] += change_steer_cost_weight * 0.0;
-        fg[0] += change_accel_cost_weight * 0.0;
+        fg[0] += change_steer_cost_weight * CppAD::pow(vars[front_wheel_angle_start + t + 1] - vars[front_wheel_angle_start + t], 2);
+        fg[0] += change_accel_cost_weight * CppAD::pow(vars[longitudinal_acceleration_start + t + 1] - vars[longitudinal_acceleration_start + t], 2);
     }
 
     /* Initial constraints, initialize the model to the initial state*/
