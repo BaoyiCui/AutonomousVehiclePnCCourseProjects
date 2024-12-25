@@ -3,6 +3,8 @@
 #pragma once
 #include <math.h>
 
+#include <cppad/cppad.hpp>
+#include <cppad/ipopt/solve.hpp>
 #include <fstream>
 #include <iomanip>
 #include <memory>
@@ -10,8 +12,6 @@
 
 #include "Eigen/Core"
 #include "common.h"
-#include <cppad/cppad.hpp>
-#include <cppad/ipopt/solve.hpp>
 
 using CppAD::AD;
 using Eigen::VectorXd;

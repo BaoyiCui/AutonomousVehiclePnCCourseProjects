@@ -470,7 +470,7 @@ void MPCControllerNode::VehicleControllerIterationCallback()
             mpc.Solve(state, coeffs,
                       target_v,    // m/s
                       cte_weight, epsi_weight, v_weight, steer_actuator_cost_weight, acc_actuator_cost_weight, change_steer_cost_weight, change_accel_cost_weight, mpc_control_horizon_length, mpc_control_step_length, kinamatic_para_Lf, a_lateral, old_steer_value, old_throttle_value, steering_ratio);
-        old_steer_value = vars[0]; // * (1 / (24 * M_PI / 180));    // carla里面的横向控制信号 [-1,1]，但是模型计算的时候使用的是弧度单位的前轮转角，当前轮最大转角为24°的时候，通过这个公式进行转换
+        old_steer_value = vars[0];    // * (1 / (24 * M_PI / 180));    // carla里面的横向控制信号 [-1,1]，但是模型计算的时候使用的是弧度单位的前轮转角，当前轮最大转角为24°的时候，通过这个公式进行转换
         old_throttle_value = vars[1];
 
         control_cmd.header.stamp = this->now();
