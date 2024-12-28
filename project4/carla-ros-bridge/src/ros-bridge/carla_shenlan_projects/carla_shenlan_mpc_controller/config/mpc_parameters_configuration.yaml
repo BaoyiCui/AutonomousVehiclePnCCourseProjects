@@ -20,11 +20,11 @@ mpc_lateral_longitudinal:
     mpc_tracking_enable_bool: true
 
     # MPC 目标函数里面可以调节的权重
-    mpc_cte_weight_int:  300 # ok
+    mpc_cte_weight_int:  600 # ok
     mpc_epsi_weight_int: 1000 # ok
-    mpc_v_weight_int: 150 # ok real 100
+    mpc_v_weight_int: 200 # ok real 100
     # 控制量幅值代价权重
-    mpc_steer_actuator_cost_weight_int: 100 # ok
+    mpc_steer_actuator_cost_weight_int: 400 # ok
     mpc_acc_actuator_cost_weight_int: 100 # ok
     # 前后两次控制量变化的代价权重
     mpc_change_steer_cost_weight_int: 200 # ok

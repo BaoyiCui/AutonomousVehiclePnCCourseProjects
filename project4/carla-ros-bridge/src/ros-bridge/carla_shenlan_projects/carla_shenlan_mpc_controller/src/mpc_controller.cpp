@@ -154,14 +154,11 @@ void FG_eval::operator()(ADvector &fg, ADvector &vars) {
         fg[1 + v_longitudinal_start + t] = v_longitudinal_1 - (v_longitudinal_0 + longitudinal_acceleration_0 * dt);
 
         /* 车辆侧向速度 */
-        // fg[1 + v_lateral_start + t] = 0;
-        // AD<double> a_lateral = ((-v_longitudinal_0 * yaw_rate_0)) + (2 / m) * (Cf * ((-front_wheel_angle_0 / 1) - ((v_lateral_0 + lf * yaw_rate_0) / (v_longitudinal_0))) + Cr * ((lr * yaw_rate_0 - v_lateral_0) / (v_longitudinal_0)));
         // 注意这里front_wheel_angle_0符号和第四章推导中定义的delta方向相反
         AD<double> a_lateral = -2 * (Cf + Cr) / (m * v_longitudinal_0) * v_lateral_0 + (2 * (lr * Cr - lf * Cf) / (m * v_longitudinal_0) - v_longitudinal_0) * yaw_rate_0 - 2 * Cf / m * front_wheel_angle_0;
         fg[1 + v_lateral_start + t] = v_lateral_1 - (v_lateral_0 + a_lateral * dt);
 
         /* 车辆横摆角速度 */
-        // fg[1 + yaw_rate_start + t] = 0;
         AD<double> yaw_acceleration = 2 * (lr * Cr - lf * Cf) / (I * v_longitudinal_0) * v_lateral_0 - 2 * (lf * lf * Cf + lr * lr * Cr) / (I * v_longitudinal_0) * psi_0 - 2 * lf * Cf / I * front_wheel_angle_0;
         fg[1 + yaw_rate_start + t] = yaw_rate_1 - (yaw_rate_0 + yaw_acceleration * dt);
 
@@ -305,7 +302,7 @@ std::vector<double> mpc_controller::Solve(const Eigen::VectorXd &state, const Ei
     options += "Sparse  true        reverse\n";
     /* NOTE: Currently the solver has a maximum time limit of 0.5 seconds. */
     /* Change this as you see fit. */
-    options += "Numeric max_cpu_time          0.1\n";
+    options += "Numeric max_cpu_time          0.05\n";    // 单位：s
 
     /* Place to return solution. */
     CppAD::ipopt::solve_result<Dvector> solution;

@@ -408,6 +408,8 @@ void MPCControllerNode::VehicleControllerIterationCallback()
 {
     rclcpp::Time start_mpc;
     rclcpp::Time end_mpc;
+    rclcpp::Time start_solve;
+    rclcpp::Time end_solve;
     start_mpc = this->now();
     double iteration_time_length;
 
@@ -465,13 +467,17 @@ void MPCControllerNode::VehicleControllerIterationCallback()
         /* Feed in the predicted state values.  这里传入的是车辆坐标系下的控制器时延模型*/
         Eigen::VectorXd state(8);
         state << pred_px, pred_py, pred_psi, pred_v_longitudinal, pred_v_lateral, pred_omega, pred_cte, pred_epsi;
-
+        start_solve = this->now();
         auto vars =
             mpc.Solve(state, coeffs,
                       target_v,    // m/s
                       cte_weight, epsi_weight, v_weight, steer_actuator_cost_weight, acc_actuator_cost_weight, change_steer_cost_weight, change_accel_cost_weight, mpc_control_horizon_length, mpc_control_step_length, kinamatic_para_Lf, a_lateral, old_steer_value, old_throttle_value, steering_ratio);
         old_steer_value = vars[0];    // * (1 / (24 * M_PI / 180));    // carla里面的横向控制信号 [-1,1]，但是模型计算的时候使用的是弧度单位的前轮转角，当前轮最大转角为24°的时候，通过这个公式进行转换
         old_throttle_value = vars[1];
+        end_solve = this->now();
+        iteration_time_length = (end_solve - start_solve).nanoseconds();
+
+        RCLCPP_INFO(this->get_logger(), "mpc solve time: %f ms", iteration_time_length / 1000000);
 
         control_cmd.header.stamp = this->now();
 
@@ -538,7 +544,7 @@ void MPCControllerNode::VehicleControllerIterationCallback()
         reference_path.header.stamp = this->get_clock()->now();
         reference_path.type = visualization_msgs::msg::Marker::LINE_STRIP;
         reference_path.action = visualization_msgs::msg::Marker::ADD;
-        reference_path.lifetime = rclcpp::Duration(20ms);    // 如果不想可视化所有的，就设置为 1ms，想可视化所有的就设置为 0ns，可视化一定时间长度的可以自定义时间
+        reference_path.lifetime = rclcpp::Duration(1ms);    // 如果不想可视化所有的，就设置为 1ms，想可视化所有的就设置为 0ns，可视化一定时间长度的可以自定义时间
         reference_path.scale.x = 0.04;
         reference_path.scale.y = 0.04;
         reference_path.scale.z = 0.04;
