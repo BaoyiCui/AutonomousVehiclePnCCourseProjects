@@ -55,7 +55,7 @@ Vec_Path FrenetOptimalTrajectory::calc_frenet_paths(float c_speed, float c_d, fl
         for (float ti = MINT; ti <= MAXT; ti += DT) {
             FrenetPath fp_without_s;
             // std::cout << "采样过程中的c_d: " << c_d << std::endl;
-            QuinticPolynomial lateral_fp(c_d, c_d_d, c_d_dd, di, 0.0, 0.0, ti);
+            QuinticPolynomial lateral_fp(c_d, c_d_d, c_d_dd, di, 0.0, 0.0, ti);    // 五阶多项式
             // 这个 for 不涉及采样，是计算已经采样得到的d-t曲线在每个时刻点状态值，这里只计算一根轨迹
             for (float _t = 0.0; _t <= ti; _t += DT) {
                 fp_without_s.t.push_back(_t);
@@ -77,15 +77,15 @@ Vec_Path FrenetOptimalTrajectory::calc_frenet_paths(float c_speed, float c_d, fl
                 fp_with_s.max_speed = *max_element(fp_with_s.s_d.begin(), fp_with_s.s_d.end());
                 fp_with_s.max_accel = *max_element(fp_with_s.s_dd.begin(), fp_with_s.s_dd.end());
 
-                float Jp = sum_of_power(fp_with_s.d_ddd);
-                float Js = sum_of_power(fp_with_s.s_ddd);
+                float Jp = sum_of_power(fp_with_s.d_ddd);    // 横向jerk平方和
+                float Js = sum_of_power(fp_with_s.s_ddd);    // 纵向jerk平方和
 
                 // 计算每条备选轨迹的代价，参考的是论文 “Optimal trajectory generation for dynamic street scenarios in a Frenét Frame“ 里面的巡航控制的代价函数计算方式
                 fp_with_s.cd = KJ * Jp + KT * ti + KD * pow(fp_with_s.d.back(), 2);    // 横向代价
                 // # square of diff from target speed
                 float ds = pow(TARGET_SPEED - fp_with_s.s_d.back(), 2);
-                fp_with_s.cv = KJ * Js + KT * ti + KD * ds;
-                fp_with_s.cf = KLAT * fp_with_s.cd + KLON * fp_with_s.cv;
+                fp_with_s.cv = KJ * Js + KT * ti + KD * ds;                  // 纵向代价
+                fp_with_s.cf = KLAT * fp_with_s.cd + KLON * fp_with_s.cv;    // 总代价函数
 
                 fp_list.push_back(fp_with_s);
             }
@@ -144,6 +144,7 @@ void FrenetOptimalTrajectory::calc_global_paths(Vec_Path& path_list, Spline2D cs
 };
 
 bool FrenetOptimalTrajectory::check_collision(FrenetPath path, const Vec_Poi ob) {
+    // 碰撞返回false，无碰撞返回true
     for (auto point : ob) {
         for (unsigned int i = 0; i < path.x.size(); i++) {
             float dist = std::pow((path.x[i] - point[0]), 2) + std::pow((path.y[i] - point[1]), 2);
@@ -154,12 +155,27 @@ bool FrenetOptimalTrajectory::check_collision(FrenetPath path, const Vec_Poi ob)
     }
     return true;
 };
+
 // 03
 // 检查路径，通过限制最大速度，最大加速度，最大曲率与避障，选取可使用的轨迹数组
 Vec_Path FrenetOptimalTrajectory::check_paths(Vec_Path path_list, const Vec_Poi ob) {
     Vec_Path output_fp_list;
     // TODO: 补全代码
-
+    for (auto path : path_list) {
+        // 检查最大速度、最大加速度、最大曲率
+        if (path.max_speed > MAX_SPEED) {
+            break;
+        } else if (path.max_accel > MAX_ACCEL) {
+            break;
+        } else if (path.max_curvature > MAX_CURVATURE) {
+            break;
+        } else if (!check_collision(path, ob)) {
+            // 检查是否与障碍物发生碰撞
+            break;
+        } else {
+            output_fp_list.emplace_back(path);
+        }
+    }
     return output_fp_list;
 };
 
