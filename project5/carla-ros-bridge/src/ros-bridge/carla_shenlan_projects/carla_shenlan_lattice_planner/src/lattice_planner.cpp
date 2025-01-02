@@ -52,6 +52,7 @@ Vec_Path FrenetOptimalTrajectory::calc_frenet_paths(float c_speed, float c_d, fl
     // 先遍历 d 方向，再遍历 t 方向，这样可以生成 d-t 曲线，每个d-t曲线下，再遍历备选速度，生成 s-t 曲线，这种方法其实只适用终点 s 自由的方式
     // 完成轨迹采样
     for (float di = 0; di <= 5; di += D_ROAD_W) {
+        // 起始右车道中心线是0，向左侧遍历
         for (float ti = MINT; ti <= MAXT; ti += DT) {
             FrenetPath fp_without_s;
             // std::cout << "采样过程中的c_d: " << c_d << std::endl;
@@ -161,21 +162,27 @@ bool FrenetOptimalTrajectory::check_collision(FrenetPath path, const Vec_Poi ob)
 Vec_Path FrenetOptimalTrajectory::check_paths(Vec_Path path_list, const Vec_Poi ob) {
     Vec_Path output_fp_list;
     // TODO: 补全代码
+    // std::cout << "before check: " << path_list.size() << std::endl;
     for (auto path : path_list) {
         // 检查最大速度、最大加速度、最大曲率
         if (path.max_speed > MAX_SPEED) {
-            break;
+            // std::cout << "exceed max speed" << std::endl;
+            continue;
         } else if (path.max_accel > MAX_ACCEL) {
-            break;
+            // std::cout << "exceed max acceleration" << std::endl;
+            continue;
         } else if (path.max_curvature > MAX_CURVATURE) {
-            break;
+            // std::cout << "exceed max curvature" << std::endl;
+            continue;
         } else if (!check_collision(path, ob)) {
             // 检查是否与障碍物发生碰撞
-            break;
+            // std::cout << "collision" << std::endl;
+            continue;
         } else {
             output_fp_list.emplace_back(path);
         }
     }
+    // std::cout << "after check: " << output_fp_list.size() << std::endl;
     return output_fp_list;
 };
 
