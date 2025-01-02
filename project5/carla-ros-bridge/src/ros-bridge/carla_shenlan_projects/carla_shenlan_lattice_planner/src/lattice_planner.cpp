@@ -15,9 +15,9 @@
 // #include "ros/ros.h"
 
 // namespace shenlan {
-#define MAX_SPEED 50.0       // maximum speed [m/s]
+#define MAX_SPEED 50.0             // maximum speed [m/s]
 #define MAX_ACCEL 6.0              // maximum acceleration [m/ss]
-#define MAX_CURVATURE 100.0          // maximum curvature [1/m]
+#define MAX_CURVATURE 100.0        // maximum curvature [1/m]
 #define MAX_ROAD_WIDTH 7.0         // maximum road width [m]
 #define D_ROAD_W 1.0               // road width sampling length [m]
 #define DT 0.2                     // time tick [s]
@@ -100,7 +100,7 @@ void FrenetOptimalTrajectory::calc_global_paths(Vec_Path& path_list, Spline2D cs
     int iiii = 0;
     // 计算采样轨迹的其他参数
     // for (FrenetPath _fpp : path_list)  // 这个遍历的方式,只能遍历用，无法修改元素中的值（传的估计是值）
-    for (Vec_Path::iterator _fpp = path_list.begin(); _fpp != path_list.end(); _fpp++){
+    for (Vec_Path::iterator _fpp = path_list.begin(); _fpp != path_list.end(); _fpp++) {
         iiii++;
         // # calc global positions
         for (int i = 0; i < _fpp->s.size(); i++) {
@@ -141,7 +141,6 @@ void FrenetOptimalTrajectory::calc_global_paths(Vec_Path& path_list, Spline2D cs
         }
         _fpp->max_curvature = *max_element(_fpp->c.begin(), _fpp->c.end());
     }
-
 };
 
 bool FrenetOptimalTrajectory::check_collision(FrenetPath path, const Vec_Poi ob) {
@@ -159,14 +158,28 @@ bool FrenetOptimalTrajectory::check_collision(FrenetPath path, const Vec_Poi ob)
 // 检查路径，通过限制最大速度，最大加速度，最大曲率与避障，选取可使用的轨迹数组
 Vec_Path FrenetOptimalTrajectory::check_paths(Vec_Path path_list, const Vec_Poi ob) {
     Vec_Path output_fp_list;
-    //TODO: 补全代码
+    // TODO: 补全代码
 
     return output_fp_list;
 };
 
 // TODO: step 1 finish frenet_optimal_planning
 FrenetPath FrenetOptimalTrajectory::frenet_optimal_planning(Spline2D csp, float s0, float c_speed, float c_d, float c_d_d, float c_d_dd, Vec_Poi ob) {
-
+    // 01 获取采样轨迹
+    Vec_Path fp_list = calc_frenet_paths(c_speed, c_d, c_d_d, c_d_dd, s0);
+    // 02 根据参考轨迹与采样的轨迹数组，计算frenet中的其他曲线参数，如航向角，曲率，ds等参数
+    calc_global_paths(fp_list, csp);
+    // 03 检查路径，通过限制最大速度，最大加速度，最大曲率与避障，选取可使用的轨迹数组
+    Vec_Path save_paths = check_paths(fp_list, ob);
+    float min_cost = std::numeric_limits<float>::max();
+    FrenetPath final_path;
+    for (auto path : save_paths) {
+        if (min_cost >= path.cf) {
+            min_cost = path.cf;
+            final_path = path;
+        }
+    }
+    return final_path;
 };
 
 FrenetPath FrenetOptimalTrajectory::frenet_optimal_planning(Spline2D csp, const FrenetInitialConditions& frenet_init_conditions, Vec_Poi ob) {
@@ -175,9 +188,11 @@ FrenetPath FrenetOptimalTrajectory::frenet_optimal_planning(Spline2D csp, const 
     float c_d_d = frenet_init_conditions.c_d_d;
     float c_d_dd = frenet_init_conditions.c_d_dd;
     float s0 = frenet_init_conditions.s0;
-
+    // 01 获取采样轨迹
     Vec_Path fp_list = calc_frenet_paths(c_speed, c_d, c_d_d, c_d_dd, s0);
+    // 02 根据参考轨迹与采样的轨迹数组，计算frenet中的其他曲线参数，如航向角，曲率，ds等参数
     calc_global_paths(fp_list, csp);
+    // 03 检查路径，通过限制最大速度，最大加速度，最大曲率与避障，选取可使用的轨迹数组
     Vec_Path save_paths = check_paths(fp_list, ob);
 
     float min_cost = std::numeric_limits<float>::max();
