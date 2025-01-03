@@ -109,9 +109,9 @@ void FrenetOptimalTrajectory::calc_global_paths(Vec_Path& path_list, Spline2D cs
             if (_fpp->s[i] >= csp.s.back()) {
                 break;
             }
-            Poi_f location_cartesian = csp.calc_postion(_fpp->s[i]);
-            float i_yaw_angle = csp.calc_yaw(_fpp->s[i]);
-            float di = _fpp->d[i];
+            Poi_f location_cartesian = csp.calc_postion(_fpp->s[i]);    // 轨迹上的参考点
+            float i_yaw_angle = csp.calc_yaw(_fpp->s[i]);       // 参考点偏航角
+            float di = _fpp->d[i];  // lateral offset
             float fx = location_cartesian[0] + di * cos(i_yaw_angle + M_PI / 2.0);
             float fy = location_cartesian[1] + di * sin(i_yaw_angle + M_PI / 2.0);
             _fpp->x.push_back(fx);
