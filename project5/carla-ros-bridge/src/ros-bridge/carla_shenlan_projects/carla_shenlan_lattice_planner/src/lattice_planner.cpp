@@ -191,6 +191,7 @@ FrenetPath FrenetOptimalTrajectory::frenet_optimal_planning(Spline2D csp, float 
     // 01 获取采样轨迹
     Vec_Path fp_list = calc_frenet_paths(c_speed, c_d, c_d_d, c_d_dd, s0);
     // 02 根据参考轨迹与采样的轨迹数组，计算frenet中的其他曲线参数，如航向角，曲率，ds等参数
+    // 此处的csp是用三次样条拟合路点得到的，作用是提供frenet坐标系的参考点
     calc_global_paths(fp_list, csp);
     // 03 检查路径，通过限制最大速度，最大加速度，最大曲率与避障，选取可使用的轨迹数组
     Vec_Path save_paths = check_paths(fp_list, ob);
