@@ -56,7 +56,7 @@ Vec_Path FrenetOptimalTrajectory::calc_frenet_paths(float c_speed, float c_d, fl
         for (float ti = MINT; ti <= MAXT; ti += DT) {
             FrenetPath fp_without_s;
             // std::cout << "采样过程中的c_d: " << c_d << std::endl;
-            QuinticPolynomial lateral_fp(c_d, c_d_d, c_d_dd, di, 0.0, 0.0, ti);    // 五阶多项式
+            QuinticPolynomial lateral_fp(c_d, c_d_d, c_d_dd, di, 0.0, 0.0, ti);    // 四阶多项式
             // 这个 for 不涉及采样，是计算已经采样得到的d-t曲线在每个时刻点状态值，这里只计算一根轨迹
             for (float _t = 0.0; _t <= ti; _t += DT) {
                 fp_without_s.t.push_back(_t);

@@ -36,7 +36,7 @@ class Spline {
    public:
     Vec_f x;
     Vec_f y;
-    int nx;
+    int nx;    // 采样点的数量
     Vec_f h;
     Vec_f a;
     Vec_f b;
@@ -61,6 +61,7 @@ class Spline {
     };
 
     float calc(float t) {
+        // 给定参数 t 计算样条的函数值
         if (t < x.front() || t > x.back()) {
             throw std::invalid_argument("received value out of the pre-defined range");
         }
@@ -70,6 +71,7 @@ class Spline {
     };
 
     float calc_d(float t) {
+        // 给定参数 t 计算样条的一阶导数
         if (t < x.front() || t > x.back()) {
             throw std::invalid_argument("received value out of the pre-defined range");
         }
@@ -79,6 +81,7 @@ class Spline {
     }
 
     float calc_dd(float t) {
+        // 给定参数 t 计算样条的二阶导数
         if (t < x.front() || t > x.back()) {
             throw std::invalid_argument("received value out of the pre-defined range");
         }
@@ -112,6 +115,7 @@ class Spline {
     };
 
     int bisect(float t, int start, int end) {
+        // 二分查找 t 在 x 中的位置
         int mid = (start + end) / 2;
         if (t == x[mid] || end - start <= 1) {
             return mid;
@@ -130,29 +134,30 @@ class Spline2D {
     Vec_f s;
 
     Spline2D(Vec_f x, Vec_f y) {
-        s = calc_s(x, y);
+        s = calc_s(x, y);   
         sx = Spline(s, x);
         sy = Spline(s, y);
     };
 
     Poi_f calc_postion(float s_t) {
-        float x = sx.calc(s_t);
+        float x = sx.calc(s_t); 
         float y = sy.calc(s_t);
-        return {{x, y}};
+        return {{x, y}};    // 全局坐标系下的横坐标
     };
 
-    float calc_curvature(float s_t) {
+    float calc_curvature(float s_t) {   // 计算曲率
         float dx = sx.calc_d(s_t);
         float ddx = sx.calc_dd(s_t);
         float dy = sy.calc_d(s_t);
         float ddy = sy.calc_dd(s_t);
+        // 曲率计算公式是 kappa = (x'*y'' - x''*y') / (x'^2 + y'^2)^(3/2)
         return (ddy * dx - ddx * dy) / (dx * dx + dy * dy);
     };
 
-    float calc_yaw(float s_t) {
+    float calc_yaw(float s_t) { // 计算yaw
         float dx = sx.calc_d(s_t);
         float dy = sy.calc_d(s_t);
-        return std::atan2(dy, dx);
+        return std::atan2(dy, dx);  // 全局坐标系下的v与x轴的夹角
     };
 
    private:
