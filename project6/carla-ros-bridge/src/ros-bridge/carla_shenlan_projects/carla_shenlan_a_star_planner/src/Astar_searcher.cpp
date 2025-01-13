@@ -203,7 +203,7 @@ double AstarPathFinder::getHeu(GridNodePtr node1, GridNodePtr node2) {
 void AstarPathFinder::AstarGraphSearch(Vector3d start_pt, Vector3d end_pt) {
     // ros::Time time_1 = ros::Time::now();
 
-    rclcpp::Time time_1 = this->now();
+    rclcpp::Time time_1 = this->now();    // 计时开始时间
     // ->now();
     // rclcpp::Time end_mpc;
     // start_mpc = this->now();
@@ -223,40 +223,41 @@ void AstarPathFinder::AstarGraphSearch(Vector3d start_pt, Vector3d end_pt) {
     GridNodePtr endPtr = new GridNode(end_idx, end_pt);
 
     // openSet is the open_list implemented through multimap in STL library
+    // openSet的类型是std::multimap<double, GridNodePtr>
     openSet.clear();
     // currentPtr represents the node with lowest f(n) in the open_list
     GridNodePtr currentPtr = NULL;
     GridNodePtr neighborPtr = NULL;
 
     // put start node in open set
-    startPtr->gScore = 0;
-    startPtr->fScore = getHeu(startPtr, endPtr);
+    startPtr->gScore = 0;                           // 起点到起点的距离为0
+    startPtr->fScore = getHeu(startPtr, endPtr);    // 计算起点到终点的启发函数
     startPtr->id = 1;
     startPtr->coord = start_pt;
-    openSet.insert(make_pair(startPtr->fScore, startPtr));
+    openSet.insert(make_pair(startPtr->fScore, startPtr));    // 将起点加入openSet
 
-    GridNodeMap[start_idx[0]][start_idx[1]][start_idx[2]]->id = 1;
+    GridNodeMap[start_idx[0]][start_idx[1]][start_idx[2]]->id = 1;    // 更新起点的状态为已加入openSet
 
-    vector<GridNodePtr> neighborPtrSets;
+    vector<GridNodePtr> neighborPtrSets;    // 存储邻居节点
     vector<double> edgeCostSets;
 
     // this is the main loop
     while (!openSet.empty()) {
         /* Remove the node with lowest cost function from open set to closed set */
-        currentPtr = openSet.begin()->second;
+        // 将openSet中f最小的节点从openSet移动到closedSet
+        currentPtr = openSet.begin()->second;    // 从openSet移除当前节点
         openSet.erase(openSet.begin());
         Eigen::Vector3i current_index = currentPtr->index;
-        GridNodeMap[current_index[0]][current_index[1]][current_index[2]]->id = -1;
+        GridNodeMap[current_index[0]][current_index[1]][current_index[2]]->id = -1;    // 将当前节点标记为已扩展(ClosedSet)
 
         // if the current node is the goal
         if (currentPtr->index == goalIdx) {
             // ros::Time time_2 = ros::Time::now();
 
-            rclcpp::Time time_2 = this->now();
+            rclcpp::Time time_2 = this->now();    // 计时结束时间
             terminatePtr = currentPtr;
             std::cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << std::endl;
             std::cout << "[A*]{sucess}  Time in A*  is " << (time_2 - time_1).nanoseconds() / 1000000.0 << "ms, path cost is " << currentPtr->gScore * resolution << "m." << std::endl;
-            ;
             std::cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << std::endl;
 
             return;
@@ -303,10 +304,6 @@ void AstarPathFinder::AstarGraphSearch(Vector3d start_pt, Vector3d end_pt) {
             }
         }
     }
-    // if search fails
-    // ros::Time time_2 = ros::Time::now();
-    // if ((time_2 - time_1).toSec() > 0.1)
-    //     ROS_WARN("Time consume in Astar path finding is %f", (time_2 - time_1).toSec());
 }
 
 vector<Vector3d> AstarPathFinder::getPath() {
